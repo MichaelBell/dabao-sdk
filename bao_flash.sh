@@ -116,6 +116,7 @@ INC="$INC -Isrc/bao1x/hardware_reset/include"
 INC="$INC -Isrc/boards/include"
 INC="$INC -Isrc/sevs"
 INC="$INC -Ithird_party/fatfs"
+INC="$INC -Ibioasm"
 
 # ---- SDK source list ----
 SDK_SRCS="

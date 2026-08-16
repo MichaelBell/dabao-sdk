@@ -15,26 +15,7 @@
 #include "nanoprintf.h"
 
 static const uint32_t bio_uart_tx_program[] = {
-  0x00300713,
-  0x00100793,
-  0x00e797b3,
-  0x00078d13,
-  0x00078c13,
-  0x00078b13,
-  0x00080513,
-  0x00000a13,
-  0x00000b93,
-  0x00e51533,
-  0x00800693,
-  0x00000a13,
-  0x00050a93,
-  0x00155513,
-  0xfff68693,
-  0xfe0698e3,
-  0x00000a13,
-  0x00078b13,
-  0x00000a13,
-  0xfc9ff06f,
+#include "uart_tx.hex"
 };
 
 int main(void)
