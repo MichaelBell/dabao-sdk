@@ -2,11 +2,11 @@
  * bio_blink.c - GPIO square wave driven by the BIO coprocessor
  *
  * Loads a simple toggle program onto BIO core 0 and generates
- * a 100 kHz square wave on PB2, verifiable with an oscilloscope.
+ * a 100 kHz square wave on PB13, verifiable with an oscilloscope.
  * The main CPU is free to do other work while the BIO runs.
  *
  * Wiring:
- *   PB2 (header pin 31) --> scope probe
+ *   PB13 (header pin 31) --> scope probe
  *   GND                 --> scope ground
  *   PB14                --> USB-serial RX
  */
@@ -28,14 +28,22 @@
  *   jal   x0, -16          ; loop
  */
 static const uint32_t bio_blink_program[] = {
-    0x00400293,   /* addi  x5, x0, 4    */
-    0x00028D13,   /* addi  x26, x5, 0   */
-    0x00028C13,   /* addi  x24, x5, 0   */
-    0x00028B13,   /* addi  x22, x5, 0   */
-    0x00000A13,   /* addi  x20, x0, 0   */
-    0x00000B93,   /* addi  x23, x0, 0   */
-    0x00000A13,   /* addi  x20, x0, 0   */
-    0xFF1FF06F,   /* jal   x0, -16      */
+  0x00002537,
+  0x000055b7,
+  0xe2058593,
+  0x00050d13,
+  0x00050c13,
+  0x00050b13,
+  0x00058613,
+  0x00000a13,
+  0xfff60613,
+  0xfe061ce3,
+  0x00000b93,
+  0x00058613,
+  0x00000a13,
+  0xfff60613,
+  0xfe061ce3,
+  0xfd9ff06f,
 };
 
 int main(void)
@@ -45,9 +53,9 @@ int main(void)
     mini_printf("\r\nBIO Square Wave on PB2\r\n");
 
     bio_init(FCLK_HZ);
-    bio_load_code_words(0, bio_blink_program, 8);
-    bio_map_pin(2);
-    bio_set_divider(0, 1750, 0);  /* 100 kHz output (fclk / 1750 / 4) */
+    bio_load_code_words(0, bio_blink_program, sizeof(bio_blink_program) / sizeof(bio_blink_program[0]));
+    bio_map_pin(13);
+    bio_set_divider(0, 17500, 0);  /* 40 kHz quantum (fclk / 17500) */
     bio_start_cores(0x1);
 
     mini_printf("BIO core 0 running. Expected: 100 kHz on PB2.\r\n");
