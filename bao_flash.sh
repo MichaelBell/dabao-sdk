@@ -89,7 +89,7 @@ if [ -z "$CROSS" ]; then
 fi
 
 ARCH="-march=rv32imac_zicsr_zifencei -mabi=ilp32"
-CFLAGS="-Os -Wall -Wextra -ffreestanding -nostdlib -g"
+CFLAGS="-O2 -Wall -Wextra -ffreestanding -nostdlib -g"
 
 INC="-Isrc/common/bao_base/include"
 INC="$INC -Isrc/common/bao_stdlib/include"
@@ -116,6 +116,7 @@ INC="$INC -Isrc/bao1x/hardware_reset/include"
 INC="$INC -Isrc/boards/include"
 INC="$INC -Isrc/sevs"
 INC="$INC -Ithird_party/fatfs"
+INC="$INC -Ithird_party/nanoprintf"
 INC="$INC -Ibioasm"
 
 # ---- SDK source list ----
