@@ -18,8 +18,10 @@
 # - CO PC2 = 18 x4 (Controller out)
 # - CI PC1 = 17 a4 (Controller in)
 
-# Data read from FIFO 2, written to FIFO 3.
-# Format is length in bytes, then one entry per byte.
+# Data length and addresses read from FIFO 2:
+# - Length in bytes
+# - Read address
+# - Write address
 
 # Byte transfer at ~30.4MHz (clock high 12 cycles, low 11 cycles for each bit)
 
@@ -29,27 +31,31 @@ _start:
     srli x4, t0, 5    # Data out pin 18
     srli a4, t0, 6    # Data in pin 17
     li t2, 0x8c0000   # Output mask
+    li x3, 1
 
     # Setup IO mask
     wriomsk t2
     setoe   t2
-
-outer_loop:
+    wrevmsk x3
     wrio    t0  # CS high, clock and data low
 
-    # Wait for data length
+outer_loop:
+    # Wait for data length and addresses
 .option rvc    
     rdf2 a3
+    rdf2 t1
+    rdf2 a2
     li x23, 0   # Set all pins low (clrio x0 = mv x23, x0 does not assemble compressed)
-.option norvc    
+.option norvc
 
 xfer_loop:
-    # Read byte from fifo2 and shift to position
-    slli a0, x18, 11
+    # Read byte and shift to position
+    lbu a0, 0(t1)
+    slli a0, a0, 11
 
     # Clock low and set first bit
     and x21, a0, x4
-
+    
 .option rvc    
     li a5, 0
 
@@ -74,10 +80,18 @@ xfer_loop:
     setio x8 # Set clock bit, data and CS remain the same.
 .endr
 
-    and x9, x21, a4 # Read last bit
-    or a5, a5, x9
-    srli x19, a5, 17  # Report read byte
+    and x9, x21, a4 # Read bit
+.option rvc    
+    or a5, a5, x9  # Report read byte
+    srli a5, a5, 17
+    sb a5, 0(a2)
+    addi t1, t1, 1
+    addi a2, a2, 1
 
     bnez a3, xfer_loop
 
+    wrio    t0  # CS high, clock and data low
+
+    li a0, 1
+    setev x3
     j outer_loop

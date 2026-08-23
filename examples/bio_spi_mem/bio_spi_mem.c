@@ -14,14 +14,11 @@
 
 #include "hardware/trng.h"
 
-#define FAST 1
+#define PSRAM_SIZE 0x800000
+#define WRITE_LEN 0x20
 
 static const uint32_t bio_spi_program[] = {
-#if FAST
-    #include "spi_fast.hex"
-#else
-    #include "spi.hex"
-#endif
+    #include "spi_mem.hex"
 };
 
 #define NANOPRINTF_IMPLEMENTATION
@@ -31,35 +28,32 @@ static const uint32_t bio_uart_tx_program[] = {
 #include "uart_tx.hex"
 };
 
-uint8_t rx_data[64] = { 0 };
+uint8_t rx_data[WRITE_LEN + 4] = { 0 };
 void bio_spi_cmd(const uint8_t* cmd, uint32_t len) {
-    bio_push_fifo2(len);  /* Number of bytes to transfer */
-    for (uint32_t i = 0; i < len; i++) {
-        while (BIO_SFR_FLEVEL & 0x80000) {
-            /* Wait for FIFO space */
-        }
-        bio_push_fifo2(cmd[i]);
+    // No need to flush cache here as the main CPU cache is write-through
 
-        /* Once 6 bytes exchanged start draining read FIFO */
-        if (i >= 6) {
-#if !FAST
-            while (bio_fifo_empty(3)) {
-                /* Wait for data */
-            }
-#endif
-            rx_data[i-6] = bio_pop_fifo3();
-        }
-    }
+    // Write command length, command pointer, and receive buffer pointer to BIO core
+    bio_push_fifo2(len);
+    bio_push_fifo2((uintptr_t)cmd);
+    bio_push_fifo2((uintptr_t)rx_data);
 
-    /* Finish reading data */
-    for (uint32_t i = len >= 6 ? len - 6 : 0; i < len; i++) {
-        while (bio_fifo_empty(3)) {
-            /* Wait for data */
-        }
-        rx_data[i] = bio_pop_fifo3();
-    }
+    // Wait for completion
+    while ((BIO_SFR_EVENT_STATUS & 0x1) == 0);
+    BIO_SFR_EVENT_CLR = 0x1;
+
+    // Flush CPU data cache
+    __asm__ volatile (
+        "fence\n"
+        ".word 0x500F\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        ::: "memory"
+    );
 }
 
+#if 1
 void bio_printf(const char *fmt, ...) {
     char buf[256];
     va_list args;
@@ -74,6 +68,9 @@ void bio_printf(const char *fmt, ...) {
         bio_push_fifo0(buf[i]);
     }
 }
+#else
+#define bio_printf mini_printf
+#endif
 
 int main(void)
 {
@@ -84,6 +81,7 @@ int main(void)
     mini_printf("\r\nBIO SPI: CS on PC7, CK on PC3, CO on PC2, CI on PC1\r\n");
 
     bio_init(FCLK_HZ);
+    BIO_SFR_CONFIG |= (1 << 7);  // Enable direct BIO memory access
     bio_load_code_words(0, bio_spi_program, sizeof(bio_spi_program) / sizeof(bio_spi_program[0]));
     bio_load_code_words(1, bio_uart_tx_program, sizeof(bio_uart_tx_program) / sizeof(bio_uart_tx_program[0]));
     bio_map_pin(23);
@@ -116,21 +114,13 @@ int main(void)
     } else {
         bio_printf("OK\r\n");
     }
+    error = false;
 
-    uint32_t divider = 40;
-
-    for (uint32_t count = 0; !error && count < divider; ++count) {
-#if !FAST
-        bio_set_divider(0, divider - count, 0);
-#endif
-
+    for (uint32_t count = 0; !error; ++count) {
         uint32_t random = trng_random();
 
-        const uint32_t PSRAM_SIZE = 0x800000;
-        const uint32_t WRITE_LEN = 0x10;
-
         uint64_t start_time = millis();
-        uint8_t write_cmd[4 + 0x10] = { 0x02 };
+        uint8_t write_cmd[4 + WRITE_LEN] = { 0x02 };
 
         for (uint32_t addr = 0; addr < PSRAM_SIZE; addr += WRITE_LEN) {
             write_cmd[1] = addr >> 16;
@@ -145,7 +135,7 @@ int main(void)
             bio_spi_cmd(write_cmd, sizeof(write_cmd));
         }
 
-        uint8_t read_cmd[4 + 0x10] = { 0x03 };
+        uint8_t read_cmd[4 + WRITE_LEN] = { 0x03 };
         for (uint32_t addr = 0; addr < PSRAM_SIZE && !error; addr += WRITE_LEN) {
             read_cmd[1] = addr >> 16;
             read_cmd[2] = (addr >> 8) & 0xFF;
@@ -167,10 +157,6 @@ int main(void)
 
         uint64_t end_time = millis();
 
-#if FAST
         bio_printf("Test loop %d completed in %u ms\r\n", count, (uint32_t)(end_time - start_time));
-#else
-        bio_printf("Test loop %d (divider %d) completed in %u ms\r\n", count, divider - count, (uint32_t)(end_time - start_time));
-#endif
     }
 }
