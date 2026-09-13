@@ -48,6 +48,8 @@ outer_loop:
     li x23, 0   # Set all pins low (clrio x0 = mv x23, x0 does not assemble compressed)
 .option norvc
 
+    add a3, a3, a2
+
 xfer_loop:
     # Read byte and shift to position
     lbu a0, 0(t1)
@@ -57,18 +59,12 @@ xfer_loop:
     and x21, a0, x4
     
 .option rvc    
-    li a5, 0
-
-    addi a3, a3, -1
     slli a0, a0, 1
-
     setio x8 # Set clock bit, data and CS remain the same.
 .option norvc    
 
-.rept 7
-    and x9, x21, a4 # Read bit and combine into a5
-    or a5, a5, x9
-    
+    and a5, x21, a4 # Read first bit
+
     # Clock low and set next bit
     and x21, a0, x4
 
@@ -78,6 +74,20 @@ xfer_loop:
 .option norvc
 
     setio x8 # Set clock bit, data and CS remain the same.
+
+.rept 6
+    and x9, x21, a4 # Read bit and combine into a5
+    
+    # Clock low and set next bit
+    and x21, a0, x4
+
+.option rvc    
+    or a5, a5, x9
+    slli a5, a5, 1
+    slli a0, a0, 1
+    setio x8 # Set clock bit, data and CS remain the same.
+.option norvc
+
 .endr
 
     and x9, x21, a4 # Read bit
@@ -88,10 +98,10 @@ xfer_loop:
     addi t1, t1, 1
     addi a2, a2, 1
 
-    bnez a3, xfer_loop
+    bne a3, a2, xfer_loop
+
+    setev x3
 
     wrio    t0  # CS high, clock and data low
-
     li a0, 1
-    setev x3
     j outer_loop
