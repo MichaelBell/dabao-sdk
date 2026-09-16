@@ -21,6 +21,8 @@ static inline void memory_fence(void)
     __asm__ volatile ("fence" ::: "memory");
 }
 
+extern void setup_page_table(void);
+
 #define BAO_OK              0
 #define BAO_ERROR           (-1)
 #define BAO_ERROR_TIMEOUT   (-2)

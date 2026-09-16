@@ -43,6 +43,15 @@ SECTIONS
         . = ALIGN(4);
     } > RRAM
 
+    /* Page table at bottom of SRAM */
+    .page_table (NOLOAD) : ALIGN(0x1000)
+    {
+        _page_table_root = .;
+        *(.page_table .page_table.*)
+        . = ALIGN(0x1000);
+        _page_table_end = .;
+    } > SRAM
+
     /* Initialized data: stored in RRAM, copied to SRAM at startup */
     .data : ALIGN(4)
     {
@@ -79,7 +88,7 @@ SECTIONS
     __global_pointer$ = _data_start + 0x800;
 
     /* Stack at the top of SRAM */
-    .stack (NOLOAD) :
+    .stack _stack_top - _stack_size (NOLOAD) :
     {
         . = . + _stack_size;
     } > SRAM

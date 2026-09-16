@@ -141,6 +141,7 @@ SDK_SRCS="
     src/common/bao_stdlib/stdio.c
     src/common/bao_stdlib/delay.c
     src/common/bao_stdlib/stdlib.c
+    src/runtime/page_table.c
     src/sevs/sevs_assert_target.c
 "
 

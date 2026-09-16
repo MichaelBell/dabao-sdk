@@ -190,3 +190,37 @@ _trap_entry:
 
     /* Return from trap */
     mret
+
+
+/* 
+ * Enable Page Table
+ *  a0: ASID
+ *  a1: page table root address
+ */
+
+    .align 4
+    .global enable_page_table
+    .type enable_page_table, @function
+
+enable_page_table:
+    /* Return to Supervisor mode (1 << 11) */
+    /* Disable interrupts (0 << 5), allow supervisor mode to access user mode pages (1 << 18) */
+    li t0, (1 << 11) | (0 << 5) | (1 << 18)
+    csrw mstatus, t0
+
+    /* Enable the MMU */
+    srli a1, a1, 12
+    slli a0, a0, 22
+    or a0, a0, a1
+    li a1, 0x80000000
+    or a0, a0, a1
+    csrw satp, a0
+
+    sfence.vma
+    .word 0x500F
+.rept 5
+    nop
+.endr
+    csrw mepc, ra
+    mret
+
