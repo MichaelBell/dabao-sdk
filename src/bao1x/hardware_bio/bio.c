@@ -434,7 +434,8 @@ void bio_start_cores(uint32_t core_mask)
     core_mask &= 0xF;
 
     /* Build SFR_CTRL value: EN + RESTART + CLKDIV_RESTART for each core */
-    uint32_t ctrl = core_mask | (core_mask << 4) | (core_mask << 8);
+    uint32_t ctrl = BIO_SFR_CTRL;
+    ctrl |= core_mask | (core_mask << 4) | (core_mask << 8);
     BIO_SFR_CTRL = ctrl;
 
     /*
