@@ -132,10 +132,10 @@ _trap_entry:
     sw      t0,  1*4(sp)       /* slot 1 = original sp */
 
     /* Set up a proper C stack for the dispatcher.
-     * Use the scratch area sp minus another 256 bytes for the C stack.
+     * Use the area imediately below the register scratch for the C stack.
      * This lets the C handler call functions safely.
      */
-    addi    sp, sp, -256
+    addi    sp, sp, -8
 
     /* Call the C dispatcher */
     call    trap_dispatch
