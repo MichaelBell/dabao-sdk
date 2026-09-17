@@ -78,6 +78,9 @@ static inline uint32_t csr_read_mip_vex(void) {
     return val;
 }
 
+extern void to_supervisor_mode(void);
+extern void to_machine_mode(void);
+
 /** @brief Initialize the interrupt dispatch system and enable global interrupts.
  *  @req REQ-DABAO-IRQ-0001 */
 void irq_init(void)
@@ -88,6 +91,8 @@ void irq_init(void)
     for (int i = 0; i < IRQ_TABLE_SIZE; i++)
         irq_handlers[i] = (irq_handler_t)0;
 
+    to_machine_mode();
+
     /* Disable all IRQ lines in MIM */
     csr_write_mim(0);
 
@@ -96,6 +101,8 @@ void irq_init(void)
 
     /* Enable global interrupts (mstatus.MIE, bit 3) */
     __asm__ volatile ("csrsi mstatus, 0x8");
+
+    to_supervisor_mode();
 }
 
 /** @brief Register a callback for an IRQ source.
@@ -128,7 +135,9 @@ void irq_enable(uint32_t irq_no)
     }
 
     /* Enable this IRQ line in the VexRiscv MIM register */
+    to_machine_mode();
     csr_set_mim(1u << irq_no);
+    to_supervisor_mode();
 }
 
 /** @brief Enable specific event bits within an IRQ array.
@@ -145,7 +154,9 @@ void irq_enable_events(uint32_t irq_no, uint32_t event_mask)
     }
 
     /* Enable this IRQ line in MIM */
+    to_machine_mode();
     csr_set_mim(1u << irq_no);
+    to_supervisor_mode();
 }
 
 /** @brief Disable an IRQ source in the MIM register.
@@ -155,7 +166,9 @@ void irq_disable(uint32_t irq_no)
 {
     SEVS_ASSERT(irq_no <= 30);
 
+    to_machine_mode();
     csr_clear_mim(1u << irq_no);
+    to_supervisor_mode();
 }
 
 /*

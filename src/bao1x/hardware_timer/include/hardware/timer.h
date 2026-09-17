@@ -48,6 +48,9 @@ static inline uint32_t csr_read_mcause(void) {
     return val;
 }
 
+extern void to_supervisor_mode(void);
+extern void to_machine_mode(void);
+
 /*
  * Start Timer0 with a periodic interrupt at the given interval.
  * The timer counts down from (ACLK/1000)*ms and auto-reloads.
@@ -69,6 +72,7 @@ static inline void timer0_start_periodic_ms(uint32_t ms)
     memory_fence();
 
     /* Enable Timer0 in VexRiscv interrupt mask */
+    to_machine_mode();
     csr_write_mim(csr_read_mim() | (1 << TIMER0_IRQ));
 
     /* Enable machine external interrupts (mie.MEIE, bit 11) */
@@ -76,6 +80,8 @@ static inline void timer0_start_periodic_ms(uint32_t ms)
 
     /* Enable global interrupts (mstatus.MIE, bit 3) */
     __asm__ volatile ("csrsi mstatus, 0x8");
+
+    to_supervisor_mode();
 
     TIMER0_EN = 1;
 }

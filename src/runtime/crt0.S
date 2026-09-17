@@ -50,6 +50,13 @@ _start:
     j       3b
 4:
 
+    /* Remove delegation of traps and interrupts to supervisor mode */
+    csrw medeleg, x0
+    csrw mideleg, x0
+
+    /* Enable the page table */
+    call    setup_page_table
+
     /* Call main */
     call    main
 
@@ -79,6 +86,11 @@ _hang:
 _trap_entry:
     /* Save original sp to mscratch */
     csrw    mscratch, sp
+
+    /* ECALL hack */
+    csrr    sp, mcause
+    addi    sp, sp, -9
+    beqz    sp, _ecall_hack
 
     /* Load scratch area pointer (top of SRAM) */
     la      sp, _stack_top
@@ -191,6 +203,27 @@ _trap_entry:
     /* Return from trap */
     mret
 
+_ecall_hack:
+    /* Taking the ecall elevated us to machine mode, so just ret */
+    csrr sp, mscratch
+    ret
+
+    .align 4
+    .global to_machine_mode
+    .type to_machine_mode, @function
+to_machine_mode:
+    ecall
+
+    .align 4
+    .global to_supervisor_mode
+    .type to_supervisor_mode, @function
+to_supervisor_mode:
+    li t0, (2 << 11)
+    csrc mstatus, t0
+    li t0, (1 << 11) | (1 << 18)
+    csrs mstatus, t0
+    csrw mepc, ra
+    mret
 
 /* 
  * Enable Page Table
